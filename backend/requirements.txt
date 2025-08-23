@@ -1,0 +1,7 @@
+fastapi[standard]
+torch
+transformers
+soundfile
+sentencepiece
+datasets[audio]==3.6.0
+websockets

@@ -4,6 +4,7 @@ function App() {
 
   const ping = async () => {
     const socket = new WebSocket("ws://localhost:8000/foo");
+    let lastTime = 0;
 
     socket.addEventListener("open", () => {
       const text = document.getElementsByTagName("input")[0].value
@@ -22,7 +23,11 @@ function App() {
       const source = audioContext.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(audioContext.destination)
-      source.start();
+      setTimeout(() => {
+        source.start();
+        source.stop
+      }, lastTime - Date.now())
+      lastTime = Date.now() - lastTime + (audioBuffer.duration * 1000)
     })
   }
 

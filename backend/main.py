@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from transformers import pipeline
-import soundfile as sf
 import torch
 from datasets import load_dataset
 from fastapi import WebSocket
@@ -38,15 +37,8 @@ app.add_middleware(
 @app.websocket("/foo")
 async def read_item(websocket: WebSocket):
     await websocket.accept()
-    while True:
-        text = await websocket.receive_text()
-        speech = synthesiser(text, forward_params={
+    lines = (await websocket.receive_text()).split(".")
+    for line in lines:
+        speech = synthesiser(line, forward_params={
                              "speaker_embeddings": speaker_embedding})
-        sf.write("speech.wav", speech["audio"],
-                 samplerate=speech["sampling_rate"])
-        print(speech["audio"].tobytes())
         await websocket.send_bytes(speech["audio"].tobytes())
-    # {"audio": speech["audio"].tolist(),
-    #                            "samplerate": speech["sampling_rate"]}))
-
-    # return FileResponse("speech.wav")

@@ -5,3 +5,5 @@ soundfile
 sentencepiece
 datasets[audio]==3.6.0
 websockets
+pypdf
+kokoro>=0.9.4

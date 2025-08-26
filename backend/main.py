@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from typing import Annotated
+from fastapi import FastAPI, WebSocket, Form, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from transformers import pipeline
 import torch
-from datasets import load_dataset
-from fastapi import WebSocket
+from pydantic import BaseModel
+from pypdf import PdfReader
+from kokoro import KPipeline
 
 app = FastAPI()
 
@@ -14,16 +15,9 @@ origins = [
 
 synthesiser = None
 speaker_embedding = None
-
-
-@app.on_event("startup")
-async def load_module():
-    global synthesiser, speaker_embedding
-    synthesiser = pipeline("text-to-speech", "microsoft/speecht5_tts")
-    embeddings_dataset = load_dataset(
-        "Matthijs/cmu-arctic-xvectors", split="validation")
-    speaker_embedding = torch.tensor(
-        embeddings_dataset[7306]["xvector"]).unsqueeze(0)
+pipeline = KPipeline(lang_code='a')
+device = torch.accelerator.current_accelerator(
+).type if torch.accelerator.is_available() else "cpu"
 
 
 app.add_middleware(
@@ -34,11 +28,26 @@ app.add_middleware(
 )
 
 
-@app.websocket("/foo")
-async def read_item(websocket: WebSocket):
+class FormData(BaseModel):
+    username: Annotated[str, Form()]
+    accountNum: Annotated[str, Form()]
+    file:   Annotated[UploadFile, File()]
+
+
+@app.post("/file")
+async def read_file(data: Annotated[FormData, Form()]):
+    file = PdfReader(data.file.file)
+    print(len(file.pages))
+    print(file.pages[100].extract_text())
+
+
+@app.websocket("/kokoro")
+async def read_kokoro(websocket: WebSocket):
     await websocket.accept()
-    lines = (await websocket.receive_text()).split(".")
-    for line in lines:
-        speech = synthesiser(line, forward_params={
-                             "speaker_embeddings": speaker_embedding})
-        await websocket.send_bytes(speech["audio"].tobytes())
+    while True:
+        lines = (await websocket.receive_text()).split(".")
+        print(lines)
+        for line in lines:
+            generator = pipeline(line, voice='af_heart')
+            for i, (gs, ps, audio) in enumerate(generator):
+                await websocket.send_bytes(audio.numpy().tobytes())

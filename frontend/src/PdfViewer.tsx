@@ -1,0 +1,75 @@
+import "./PdfViewer.css"
+import { useRef, useState, type MouseEvent } from 'react';
+import { pdfjs, Document, Page } from 'react-pdf';
+import './AnnotationLayer.css';
+import './TextLayer.css';
+import { useSocket } from './hooks/useSocket.ts';
+
+export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
+  const [numPages, setNumPages] = useState<number>();
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const spanRef = useRef(null);
+  const { sendText } = useSocket();
+
+  pdfjs.GlobalWorkerOptions.workerSrc =
+    new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url,
+    ).toString();
+
+  function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
+    console.log(numPages)
+    setNumPages(() => numPages);
+  }
+
+  const getPage = () => {
+    const input = document.getElementById("page-number")
+    if (input && input instanceof HTMLInputElement)
+      setPageNumber(input.valueAsNumber)
+  }
+
+  // {
+  //   Array.apply(null, Array(numPages)).map((_, i) => i + 1).map(page => <Page scale={1.5} pageNumber={page} />)
+  // }
+  const getText = (e: MouseEvent<HTMLElement>) => {
+    let currentSpan = e.target as ChildNode | null
+    if (!(currentSpan instanceof HTMLSpanElement))
+      return
+    let text = "";
+    let lines = 0;
+    while (lines < 5) {
+      if (!currentSpan) break
+      if (currentSpan instanceof HTMLSpanElement) {
+        text += currentSpan.textContent
+        currentSpan = currentSpan.nextSibling
+      } else if (currentSpan instanceof HTMLBRElement) {
+        lines++;
+        currentSpan = currentSpan.nextSibling
+        text += " "
+      }
+      else if (currentSpan instanceof HTMLElement) {
+        currentSpan = currentSpan.nextSibling
+      } else break;
+    }
+
+    if (e.target instanceof HTMLSpanElement)
+      sendText(text, e.target)
+  }
+
+  return (
+    <div>
+
+      <Document ref={spanRef} className="hide-text" file={file} onLoadSuccess={onDocumentLoadSuccess}>
+        <Page onClick={getText} renderTextLayer={true} pageNumber={pageNumber} renderAnnotationLayer={true} />
+      </Document>
+      <button onClick={() => setPageNumber(p => Math.max(p - 1, 1))}>prev</button>
+      <p>
+        Page {pageNumber} of {numPages}
+      </p>
+      <button onClick={() => setPageNumber(p => Math.min(p + 1, 10000))}>next</button>
+      <input type="number" id="page-number" />
+      <button onClick={getPage}>get page</button>
+
+    </div>
+  )
+}

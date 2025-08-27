@@ -51,12 +51,12 @@ function App() {
 
     setFile(file)
 
-    const response = await fetch("http://localhost:8000/file", {
-      method: "POST",
-      body: formData
-    });
+    // const response = await fetch("http://localhost:8000/file", {
+    //   method: "POST",
+    //   body: formData
+    // });
 
-    console.log(await response.json());
+    // console.log(await response.json());
     return formData
   }
 

@@ -46,8 +46,8 @@ async def read_kokoro(websocket: WebSocket):
     await websocket.accept()
     while True:
         lines = (await websocket.receive_text()).split(".")
-        print(lines)
         for line in lines:
+            print(line)
             generator = pipeline(line, voice='af_heart')
             for i, (gs, ps, audio) in enumerate(generator):
                 await websocket.send_bytes(audio.numpy().tobytes())

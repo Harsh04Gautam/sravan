@@ -31,36 +31,16 @@ export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
   // {
   //   Array.apply(null, Array(numPages)).map((_, i) => i + 1).map(page => <Page scale={1.5} pageNumber={page} />)
   // }
-  const getText = (e: MouseEvent<HTMLElement>) => {
-    let currentSpan = e.target as ChildNode | null
-    if (!(currentSpan instanceof HTMLSpanElement))
-      return
-    let text = "";
-    let lines = 0;
-    while (lines < 5) {
-      if (!currentSpan) break
-      if (currentSpan instanceof HTMLSpanElement) {
-        text += currentSpan.textContent
-        currentSpan = currentSpan.nextSibling
-      } else if (currentSpan instanceof HTMLBRElement) {
-        lines++;
-        currentSpan = currentSpan.nextSibling
-        text += " "
-      }
-      else if (currentSpan instanceof HTMLElement) {
-        currentSpan = currentSpan.nextSibling
-      } else break;
-    }
-
+  const handleText = (e: MouseEvent<HTMLElement>) => {
     if (e.target instanceof HTMLSpanElement)
-      sendText(text, e.target)
+      sendText(e.target)
   }
 
   return (
     <div>
 
       <Document ref={spanRef} className="hide-text" file={file} onLoadSuccess={onDocumentLoadSuccess}>
-        <Page onClick={getText} renderTextLayer={true} pageNumber={pageNumber} renderAnnotationLayer={true} />
+        <Page onClick={handleText} renderTextLayer={true} pageNumber={pageNumber} renderAnnotationLayer={true} />
       </Document>
       <button onClick={() => setPageNumber(p => Math.max(p - 1, 1))}>prev</button>
       <p>

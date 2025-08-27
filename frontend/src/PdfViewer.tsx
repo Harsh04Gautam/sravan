@@ -18,7 +18,6 @@ export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
     ).toString();
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
-    console.log(numPages)
     setNumPages(() => numPages);
   }
 
@@ -28,9 +27,6 @@ export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
       setPageNumber(input.valueAsNumber)
   }
 
-  // {
-  //   Array.apply(null, Array(numPages)).map((_, i) => i + 1).map(page => <Page scale={1.5} pageNumber={page} />)
-  // }
   const handleText = (e: MouseEvent<HTMLElement>) => {
     if (e.target instanceof HTMLSpanElement)
       sendText(e.target)

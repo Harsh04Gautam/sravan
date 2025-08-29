@@ -3,168 +3,133 @@ import { getAudioSource } from "../utils/audio";
 import { getRangesAndNextTextElement, highlightText } from "../utils/highlight";
 import { readPdfText } from "../utils/readText";
 
-interface ScheduleAudio {
-  scheduleFunction: () => void;
+interface Audio {
   getNewSource: () => AudioBufferSourceNode;
-  timeoutId: number | null;
-  time: number;
   duration: number;
-  timePlayed: number | null;
-  currentLastTime: number;
-  scheduleCurrentTime: number;
 }
 
 export const useSocket = () => {
-  const [socket, setSocket] = useState<WebSocket>();
+  const socket = useRef<WebSocket>(null);
   const sendText =
-    useRef<(span: Readonly<HTMLSpanElement | ChildNode | null>) => void>(null);
-  const [play, setPlay] = useState(true);
-  let htmlTextElement: HTMLElement | ChildNode | null = null;
-  let ranges: [Range[]] | null = null;
-  let lastTime = Date.now();
-  const scheduledAudio = useRef(new Array<ScheduleAudio>());
-  const currentSource = useRef<AudioBufferSourceNode>(null);
-  let currentScheduledAudio = useRef<ScheduleAudio>(null);
+    useRef<(span: Readonly<HTMLElement | ChildNode | null>) => void>(null);
+  const [play, setPlay] = useState(false);
+  const [free, setFree] = useState(true);
+  const htmlTextElement = useRef<HTMLElement | ChildNode>(null);
+  const ranges = useRef<[Range[]]>(null);
+  const refresh = useRef(true);
+  const currentAudio = useRef<{
+    audio: Audio;
+    range: Range[];
+    timeoutId: number | null;
+    offset: number;
+    startTime: number;
+    source: AudioBufferSourceNode | null;
+  }>(null);
 
-  // const audioEvent = new Event("audio");
-
-  // window.addEventListener("finished-playing", ()=> {
-  //   const schedule = scheduledAudio.current.shift();
-  //       highlightText(ranges);
-  //       const source = getNewSource();
-  //       source.start();
-  //       currentSource.current = source;
-  //
-  //       console.log(ranges);
-  //       if (ranges && ranges?.length < 5 && sendText.current)
-  //         sendText.current(htmlTextElement);
-  // })
+  const audioQueue = useRef(new Array<Audio>());
+  const audioEvent = useRef(new Event("play-next"));
 
   useEffect(() => {
-    // pause
-    if (!play) {
-      if (currentSource.current) {
-        currentSource.current.stop();
-      }
-      if (currentScheduledAudio.current) {
-        currentScheduledAudio.current.timePlayed =
-          currentScheduledAudio.current.currentLastTime -
-          Date.now() -
-          currentScheduledAudio.current.duration;
-      }
+    if (
+      ranges.current &&
+      ranges.current?.length < 10 &&
+      sendText.current &&
+      htmlTextElement.current
+    ) {
+      sendText.current(htmlTextElement.current);
+    }
 
-      for (const schedule of scheduledAudio.current) {
-        schedule.timeoutId && clearTimeout(schedule.timeoutId);
-      }
+    if (!currentAudio.current) return;
+    if (play) {
+      const { audio, range, offset } = currentAudio.current;
+      if (!audio || !range) return;
+      highlightText(range);
+      currentAudio.current.source = audio.getNewSource();
+      currentAudio.current.source.start(0, offset / 1000);
+      currentAudio.current.startTime = Date.now() - offset;
+      currentAudio.current.timeoutId = setTimeout(() => {
+        setFree(true);
+        window.dispatchEvent(audioEvent.current);
+      }, audio.duration - offset);
+    } else {
+      if (!currentAudio.current) return;
+      const { timeoutId, startTime, source } = currentAudio.current;
+      source && source.stop();
+      currentAudio.current.offset = Date.now() - startTime;
+      timeoutId && clearTimeout(timeoutId);
     }
-    // play
-    else {
-      if (currentScheduledAudio.current) {
-        const source = currentScheduledAudio.current.getNewSource();
-        source.start(0, currentScheduledAudio.current?.timePlayed || 0);
-        currentSource.current = source;
-      }
-      // for (const schedule of scheduledAudio.current) {
-      //   const offset = currentScheduledAudio.current?.timePlayed || 0;
-      //   setTimeout(schedule.scheduleFunction, schedule.time - offset);
-      // }
-    }
-  }, [play]);
+  }, [currentAudio.current, play]);
 
   useEffect(() => {
     const wsCurrent = new WebSocket("ws://localhost:8000/kokoro");
-    setSocket(wsCurrent);
+    socket.current = wsCurrent;
 
     return () => {
-      console.log("close");
       wsCurrent?.close();
     };
   }, []);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket.current) return;
+
+    const playNext = () => {
+      if (!play || !free) return;
+      const audio = audioQueue.current.shift();
+      if (!audio) return;
+      const range = ranges.current?.shift();
+      if (!range) return;
+      setFree(false);
+      currentAudio.current = {
+        audio,
+        range,
+        timeoutId: null,
+        startTime: Date.now(),
+        offset: 0,
+        source: null,
+      };
+    };
 
     const handleMessage = async (event: MessageEvent<any>) => {
       const { getNewSource, duration } = await getAudioSource(event.data);
-      console.log(play);
-
-      function scheduleFunction() {
-        if (currentScheduledAudio.current) {
-          currentScheduledAudio.current =
-            scheduledAudio.current.shift() || null;
-        }
-        highlightText(ranges);
-        const source = getNewSource();
-        source.start();
-        currentSource.current = source;
-
-        console.log(ranges);
-        if (ranges && ranges?.length < 5 && sendText.current)
-          sendText.current(htmlTextElement);
-      }
-      if (play) {
-        const time = lastTime - Date.now();
-        const timeoutId = setTimeout(scheduleFunction, time);
-        lastTime =
-          Date.now() + Math.max(lastTime - Date.now(), 0) + duration * 1000;
-        const schedule = {
-          scheduleFunction,
-          getNewSource,
-          timeoutId,
-          duration,
-          timePlayed: null,
-          time,
-          currentLastTime: lastTime,
-          scheduleCurrentTime: Date.now(),
-        };
-        if (!currentScheduledAudio.current) {
-          currentScheduledAudio.current = schedule;
-        }
-        scheduledAudio.current.push(schedule);
-      } else {
-        const time = lastTime - Date.now();
-        // const timeoutId = setTimeout(scheduleFunction, time);
-        lastTime =
-          Date.now() + Math.max(lastTime - Date.now(), 0) + duration * 1000;
-        const schedule = {
-          scheduleFunction,
-          getNewSource,
-          timeoutId: null,
-          duration,
-          timePlayed: null,
-          time,
-          currentLastTime: lastTime,
-          scheduleCurrentTime: Date.now(),
-        };
-        if (!currentScheduledAudio.current) {
-          currentScheduledAudio.current = schedule;
-        }
-        scheduledAudio.current.push(schedule);
+      audioQueue.current.push({ getNewSource, duration });
+      if (play && free) {
+        window.dispatchEvent(audioEvent.current);
       }
     };
 
-    socket.addEventListener("message", handleMessage);
+    window.addEventListener("play-next", playNext);
+    socket.current && socket.current.addEventListener("message", handleMessage);
 
-    sendText.current = (span: Readonly<HTMLSpanElement | ChildNode | null>) => {
+    sendText.current = (span: Readonly<HTMLElement | ChildNode | null>) => {
       if (!span) return;
       const text = readPdfText(span);
 
       if (!socket) return;
       let result = getRangesAndNextTextElement(span);
-      htmlTextElement = result?.span || null;
-      if (ranges) {
+      htmlTextElement.current = result?.span || null;
+      if (ranges.current) {
         //  @ts-ignore
-        ranges = [...ranges, ...result.ranges];
+        ranges.current = [...ranges.current, ...result.ranges];
       } else {
-        ranges = result?.ranges || null;
+        ranges.current = result?.ranges || null;
       }
-      socket.send(text);
+      if (!socket.current) return;
+      if (socket.current.readyState != socket.current.OPEN) {
+        socket.current.onopen = () => {
+          if (!socket.current) return;
+          socket.current.send(text);
+        };
+      } else {
+        socket.current.send(text);
+      }
     };
 
     return () => {
-      socket.removeEventListener("message", handleMessage);
+      socket.current &&
+        socket.current.removeEventListener("message", handleMessage);
+      window.removeEventListener("play-next", playNext);
     };
-  }, [socket, play]);
+  }, [socket.current, play, free, htmlTextElement.current, refresh.current]);
 
-  return { socket, sendText, play, setPlay };
+  return { sendText, play, setPlay, refresh };
 };

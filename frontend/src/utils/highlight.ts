@@ -20,7 +20,7 @@ export const getRangesAndNextTextElement = (
     span = span?.nextSibling;
   }
 
-  let str = " ";
+  let str = ".";
   if (allTextNodes.length < 0) return null;
 
   let rn = [[]] as [Range[]];
@@ -51,15 +51,8 @@ export const getRangesAndNextTextElement = (
   return { ranges: rn, span };
 };
 
-export const highlightText = (ranges: [Range[]] | null) => {
-  if (ranges && ranges.length > 0) {
-    let currentRange = ranges.shift();
-    while (currentRange?.length == 0) {
-      currentRange = ranges.shift();
-    }
-    if (currentRange) {
-      const searchResultsHighlight = new Highlight(...currentRange.flat());
-      CSS.highlights.set("search-results", searchResultsHighlight);
-    }
-  }
+export const highlightText = (range: Range[] | null) => {
+  if (!range) return;
+  const searchResultsHighlight = new Highlight(...range.flat());
+  CSS.highlights.set("search-results", searchResultsHighlight);
 };

@@ -1,10 +1,12 @@
+from kokoro import KPipeline
+import asyncio
+from pypdf import PdfReader
+from pydantic import BaseModel
+import torch
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated
 from fastapi import FastAPI, WebSocket, Form, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-import torch
-from pydantic import BaseModel
-from pypdf import PdfReader
-from kokoro import KPipeline
+from fastapi import WebSocketDisconnect
 
 app = FastAPI()
 
@@ -18,6 +20,14 @@ speaker_embedding = None
 pipeline = KPipeline(lang_code='a')
 device = torch.accelerator.current_accelerator(
 ).type if torch.accelerator.is_available() else "cpu"
+
+
+async def send_bytes(websocket: WebSocket, lines):
+    for line in lines:
+        print(line)
+        generator = pipeline(line, voice='af_heart')
+        for i, (gs, ps, audio) in enumerate(generator):
+            await websocket.send_bytes(audio.numpy().tobytes())
 
 
 app.add_middleware(
@@ -44,10 +54,12 @@ async def read_file(data: Annotated[FormData, Form()]):
 @app.websocket("/kokoro")
 async def read_kokoro(websocket: WebSocket):
     await websocket.accept()
-    while True:
-        lines = (await websocket.receive_text()).split(" ")
-        for line in lines:
-            print(line)
-            generator = pipeline(line, voice='af_heart')
-            for i, (gs, ps, audio) in enumerate(generator):
-                await websocket.send_bytes(audio.numpy().tobytes())
+    task = None
+    try:
+        while True:
+            lines = (await websocket.receive_text()).split(".")
+            task = asyncio.create_task(send_bytes(websocket, lines))
+            await task
+    except WebSocketDisconnect:
+        task.cancel()
+        print("disconnected")

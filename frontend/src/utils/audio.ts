@@ -14,5 +14,5 @@ export const getAudioSource = async (audioArray: Blob) => {
     source.connect(audioContext.destination);
     return source;
   };
-  return { getNewSource, duration: audioBuffer.duration };
+  return { getNewSource, duration: audioBuffer.duration * 1000 };
 };

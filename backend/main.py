@@ -45,7 +45,7 @@ async def read_file(data: Annotated[FormData, Form()]):
 async def read_kokoro(websocket: WebSocket):
     await websocket.accept()
     while True:
-        lines = (await websocket.receive_text()).split(".")
+        lines = (await websocket.receive_text()).split(" ")
         for line in lines:
             print(line)
             generator = pipeline(line, voice='af_heart')

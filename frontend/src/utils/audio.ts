@@ -8,8 +8,11 @@ export const getAudioSource = async (audioArray: Blob) => {
     audioBuffer.copyToChannel(data, channel);
   }
 
-  const source = audioContext.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(audioContext.destination);
-  return { source, duration: audioBuffer.duration };
+  const getNewSource = () => {
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    return source;
+  };
+  return { getNewSource, duration: audioBuffer.duration };
 };

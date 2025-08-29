@@ -20,7 +20,7 @@ export const getRangesAndNextTextElement = (
     span = span?.nextSibling;
   }
 
-  let str = ".";
+  let str = " ";
   if (allTextNodes.length < 0) return null;
 
   let rn = [[]] as [Range[]];

@@ -9,7 +9,7 @@ export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState<number>(1);
   const spanRef = useRef(null);
-  const { sendText, play, setPlay, refresh } = useSocket();
+  const { sendText, play, playPause } = useSocket();
 
   pdfjs.GlobalWorkerOptions.workerSrc =
     new URL(
@@ -28,10 +28,14 @@ export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
   }
 
   const handleText = (e: MouseEvent<HTMLElement>) => {
-    refresh.current = !refresh.current
-    if (!(e.target instanceof HTMLSpanElement && sendText.current)) return
-    sendText.current(e.target)
-    setPlay(true);
+    if (!(e.target instanceof HTMLSpanElement)) return
+    sendText(e.target, true)
+    play.current = true;
+  }
+
+  const handlePlayPause = () => {
+    play.current = !play.current
+    playPause(play.current)
   }
 
   return (
@@ -46,7 +50,7 @@ export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
       <button onClick={() => setPageNumber(p => Math.min(p + 1, 10000))}>next</button>
       <input type="number" id="page-number" />
       <button onClick={getPage}>get page</button>
-      <button onClick={() => setPlay(() => !play)}>play/pause</button>
+      <button onClick={handlePlayPause}>play/pause</button>
     </div>
   )
 }

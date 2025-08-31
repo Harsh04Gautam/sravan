@@ -52,7 +52,6 @@ export const useSocket = () => {
       source && source.stop();
       currentAudio.current.offset = Date.now() - startTime;
       timeoutId && clearTimeout(timeoutId);
-      free.current = true;
     }
   };
 
@@ -91,7 +90,6 @@ export const useSocket = () => {
     if (newSocket) {
       playPause(false);
       free.current = true;
-
       ranges.current = null;
       currentAudio.current = null;
       audioQueue.current = new Array<Audio>();

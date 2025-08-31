@@ -2,7 +2,7 @@ export const getAudioSource = async (audioArray: Blob) => {
   const array = await audioArray.arrayBuffer();
   const data = new Float32Array(array);
   const audioContext = new AudioContext();
-  const audioBuffer = audioContext.createBuffer(2, data.length, 24000);
+  const audioBuffer = audioContext.createBuffer(1, data.length, 24000);
 
   for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
     audioBuffer.copyToChannel(data, channel);

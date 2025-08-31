@@ -1,14 +1,13 @@
 import { useRef } from "react";
 import { getAudioSource } from "../utils/audio";
 import { getRangesAndNextTextElement, highlightText } from "../utils/highlight";
-import { readPdfText } from "../utils/readText";
 
 interface Audio {
   getNewSource: () => AudioBufferSourceNode;
   duration: number;
 }
 
-export const useSocket = () => {
+export const useSocket = (getNextPage: () => void) => {
   const socket = useRef<WebSocket>(null);
   const play = useRef(false);
   const free = useRef(true);
@@ -34,7 +33,9 @@ export const useSocket = () => {
       sendText(htmlTextElement.current, false);
     }
 
-    if (!currentAudio.current) return;
+    if (!currentAudio.current) {
+      return;
+    }
     if (play) {
       const { audio, range, offset } = currentAudio.current;
       if (!audio || !range) return;
@@ -58,7 +59,10 @@ export const useSocket = () => {
   const setupNext = () => {
     if (!(play.current && free.current)) return;
     const audio = audioQueue.current.shift();
-    if (!audio) return;
+    if (!audio) {
+      getNextPage();
+      return;
+    }
     const range = ranges.current?.shift();
     if (!range) return;
     free.current = false;
@@ -97,16 +101,14 @@ export const useSocket = () => {
       ranges.current = null;
       socket.current?.removeEventListener("message", handleMessage);
       socket.current?.close();
-      window.removeEventListener("play-next", setupNext);
+      window.removeEventListener("setup-next", setupNext);
       socket.current = new WebSocket("ws://localhost:8000/kokoro");
       socket.current.addEventListener("message", handleMessage);
     }
 
-    if (!element) return;
-    const text = readPdfText(element);
-
-    if (!socket) return;
+    if (!socket.current) return;
     let result = getRangesAndNextTextElement(element);
+    if (!result) return;
     htmlTextElement.current = result?.span || null;
     if (ranges.current) {
       //  @ts-ignore
@@ -114,16 +116,14 @@ export const useSocket = () => {
     } else {
       ranges.current = result?.ranges || null;
     }
-    if (!socket.current) return;
     if (socket.current.readyState != socket.current.OPEN) {
       socket.current.onopen = () => {
-        if (!socket.current) return;
-        socket.current.send(text);
+        socket.current?.send(result?.text);
       };
     } else {
-      socket.current.send(text);
+      socket.current.send(result?.text);
     }
   };
 
-  return { sendText, play, playPause };
+  return { socket, sendText, play, playPause };
 };

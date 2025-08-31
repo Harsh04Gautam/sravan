@@ -3,19 +3,21 @@ export const getRangesAndNextTextElement = (
 ): {
   ranges: [Range[]];
   span: HTMLElement | ChildNode | null;
+  text: string;
 } | null => {
   if (!span) return null;
   const allTextNodes = [];
   let i = 0;
-  while (span && i < 5) {
+  let text = "";
+  while (span && i < 3) {
     const treeWalker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
     let currentNode = treeWalker.nextNode();
     while (currentNode) {
       allTextNodes.push(currentNode);
+      text += currentNode.textContent;
+      let index = currentNode?.textContent?.indexOf(".") || -1;
+      index > -1 && i++;
       currentNode = treeWalker.nextNode();
-    }
-    if (span instanceof HTMLBRElement) {
-      i++;
     }
     span = span?.nextSibling;
   }
@@ -48,7 +50,7 @@ export const getRangesAndNextTextElement = (
       }
     });
 
-  return { ranges: rn, span };
+  return { ranges: rn, span, text };
 };
 
 export const highlightText = (range: Range[] | null) => {

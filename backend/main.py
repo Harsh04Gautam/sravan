@@ -24,7 +24,6 @@ device = torch.accelerator.current_accelerator(
 
 async def send_bytes(websocket: WebSocket, lines):
     for line in lines:
-        print(line)
         generator = pipeline(line, voice='af_heart')
         for i, (gs, ps, audio) in enumerate(generator):
             await websocket.send_bytes(audio.numpy().tobytes())
@@ -57,7 +56,18 @@ async def read_kokoro(websocket: WebSocket):
     task = None
     try:
         while True:
-            lines = (await websocket.receive_text()).split(".")
+            text = await websocket.receive_text()
+            start_pos = 0
+            lines = []
+            while (start_pos < len(text)):
+                if "." not in text[start_pos:]:
+                    lines.append(text[start_pos:])
+                    break
+                index = text.index(".", start_pos)
+                lines.append(text[start_pos:index+1])
+                start_pos = index + 1
+
+            print(lines)
             task = asyncio.create_task(send_bytes(websocket, lines))
             await task
     except WebSocketDisconnect:

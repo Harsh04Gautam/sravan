@@ -20,6 +20,7 @@ export const getRangesAndNextTextElement = (
       currentNode = treeWalker.nextNode();
     }
     span = span?.nextSibling;
+    if (span instanceof HTMLBRElement) text += " ";
   }
 
   let str = ".";
@@ -49,7 +50,7 @@ export const getRangesAndNextTextElement = (
         rn.push([]);
       }
     });
-
+  if (rn[rn.length - 1].length == 0) rn.pop();
   return { ranges: rn, span, text };
 };
 

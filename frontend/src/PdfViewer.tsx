@@ -9,12 +9,12 @@ import './TextLayer.css';
 import { useSocket } from './hooks/useSocket.ts';
 
 export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
-  const [numPages, setNumPages] = useState<number>(0);
+  const numPages = useRef(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const spanRef = useRef(null);
   const getNextPage = () => {
     play.current = false;
-    setPageNumber(Math.min(pageNumber + 1, numPages))
+    setPageNumber((p) => Math.min(p + 1, numPages.current))
   }
   const pageRef = useRef<HTMLDivElement>(null);
   const { socket, sendText, play, playPause } = useSocket(getNextPage);
@@ -26,8 +26,8 @@ export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
     ).toString();
 
 
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
-    setNumPages(() => numPages);
+  function onDocumentLoadSuccess({ numPages: n }: { numPages: number }): void {
+    numPages.current = n
   }
 
   const handleText = (e: MouseEvent<HTMLElement>) => {
@@ -56,7 +56,7 @@ export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
     socket.current = null;
     play.current = false;
     playPause(false);
-    setPageNumber(Math.min(pageNumber + 1, numPages))
+    setPageNumber(Math.min(pageNumber + 1, numPages.current))
   }
 
   const handlePrev = () => {

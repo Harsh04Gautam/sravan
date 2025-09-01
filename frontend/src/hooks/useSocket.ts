@@ -45,6 +45,13 @@ export const useSocket = (getNextPage: () => void) => {
       currentAudio.current.startTime = Date.now() - offset;
       currentAudio.current.timeoutId = setTimeout(() => {
         free.current = true;
+        if (
+          // @ts-ignore
+          ranges.current?.length == 0 &&
+          htmlTextElement.current == null
+        ) {
+          getNextPage();
+        }
         window.dispatchEvent(audioEventSetup.current);
       }, audio.duration - offset);
     } else {
@@ -59,11 +66,8 @@ export const useSocket = (getNextPage: () => void) => {
   const setupNext = () => {
     if (!(play.current && free.current)) return;
     const audio = audioQueue.current.shift();
-    if (!audio) {
-      getNextPage();
-      return;
-    }
-    const range = ranges.current?.shift();
+    if (!audio) return;
+    let range = ranges.current?.shift();
     if (!range) return;
     free.current = false;
     currentAudio.current = {
@@ -109,8 +113,26 @@ export const useSocket = (getNextPage: () => void) => {
     if (!socket.current) return;
     let result = getRangesAndNextTextElement(element);
     if (!result) return;
+    // skip blank pages
+    if (
+      element?.textContent == "" &&
+      result?.text == "" &&
+      result.span == null &&
+      //  @ts-ignore
+      result.ranges.length == 0 &&
+      audioQueue.current.length == 0 &&
+      //  @ts-ignore
+      ranges.current?.length == 0
+    ) {
+      getNextPage();
+      return;
+    }
     htmlTextElement.current = result?.span || null;
-    if (ranges.current) {
+    if (
+      ranges.current &&
+      ranges.current?.length > 0 &&
+      ranges?.current[0].length > 0
+    ) {
       //  @ts-ignore
       ranges.current = [...ranges.current, ...result.ranges];
     } else {

@@ -12,6 +12,7 @@ export const useSocket = (getNextPage: () => void) => {
   const play = useRef(false);
   const free = useRef(true);
   const htmlTextElement = useRef<HTMLElement | ChildNode>(null);
+  const endIndex = useRef<number>(0);
   const ranges = useRef<[Range[]]>(null);
   const currentAudio = useRef<{
     audio: Audio;
@@ -50,6 +51,7 @@ export const useSocket = (getNextPage: () => void) => {
           ranges.current?.length == 0 &&
           htmlTextElement.current == null
         ) {
+          endIndex.current = 0;
           getNextPage();
         }
         window.dispatchEvent(audioEventSetup.current);
@@ -101,6 +103,7 @@ export const useSocket = (getNextPage: () => void) => {
       ranges.current = null;
       currentAudio.current = null;
       audioQueue.current = new Array<Audio>();
+      endIndex.current = 0;
       currentAudio.current = null;
       ranges.current = null;
       socket.current?.removeEventListener("message", handleMessage);
@@ -111,23 +114,16 @@ export const useSocket = (getNextPage: () => void) => {
     }
 
     if (!socket.current) return;
-    let result = getRangesAndNextTextElement(element);
-    if (!result) return;
-    // skip blank pages
-    if (
-      element?.textContent == "" &&
-      result?.text == "" &&
-      result.span == null &&
-      //  @ts-ignore
-      result.ranges.length == 0 &&
-      audioQueue.current.length == 0 &&
-      //  @ts-ignore
-      ranges.current?.length == 0
-    ) {
+    let result = getRangesAndNextTextElement(element, endIndex.current);
+    // skip empty page, When it's last page the getnextpage dose not increment the page
+    // number and the page will not rerender, which prevents the infinite loop
+    if (!result) {
+      endIndex.current = 0;
       getNextPage();
       return;
     }
     htmlTextElement.current = result?.span || null;
+    endIndex.current = result.endIndex;
     if (
       ranges.current &&
       ranges.current?.length > 0 &&

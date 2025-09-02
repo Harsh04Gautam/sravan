@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated
 from fastapi import FastAPI, WebSocket, Form, File, UploadFile
 from fastapi import WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Query
+from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 app = FastAPI()
 
@@ -56,7 +58,7 @@ async def read_kokoro(websocket: WebSocket):
     task = None
     try:
         while True:
-            text = await websocket.receive_text()
+            text = (await websocket.receive_text()).lower()
             start_pos = 0
             lines = []
             while (start_pos < len(text)):
@@ -73,3 +75,30 @@ async def read_kokoro(websocket: WebSocket):
     except WebSocketDisconnect:
         task.cancel()
         print("disconnected")
+
+
+# data base
+
+class Hero(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    password: str
+
+
+sqlite_file_name = "database.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
+
+connect_args = {"check_same_thread": False}
+engine = create_engine(sqlite_url, connect_args=connect_args)
+
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+
+SessionDep = Annotated[Session, Depends(get_session)]

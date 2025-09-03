@@ -1,5 +1,5 @@
 import "./PdfViewer.css"
-import { useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { pdfjs, Document, Page } from 'react-pdf';
 import { Prev } from './assets/Prev.tsx'
 import { Next } from './assets/Next.tsx'
@@ -7,6 +7,7 @@ import { Play } from './assets/Play.tsx'
 import './AnnotationLayer.css';
 import './TextLayer.css';
 import { useSocket } from './hooks/useSocket.ts';
+import { removeHighlight } from "./utils/highlight.ts";
 
 export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
   const numPages = useRef(0);
@@ -17,7 +18,11 @@ export const PdfViewer = ({ file }: { file: ArrayBuffer }) => {
     setPageNumber((p) => Math.min(p + 1, numPages.current))
   }
   const pageRef = useRef<HTMLDivElement>(null);
-  const { socket, sendText, play, playPause } = useSocket(getNextPage);
+  const { socket, sendText, play, playPause, highlightElement } = useSocket(getNextPage);
+
+  useEffect(() => {
+    highlightElement && highlightElement.current && removeHighlight(highlightElement.current)
+  }, [pageNumber])
 
   pdfjs.GlobalWorkerOptions.workerSrc =
     new URL(

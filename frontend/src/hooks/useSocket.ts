@@ -1,6 +1,10 @@
 import { useRef } from "react";
 import { getAudioSource } from "../utils/audio";
-import { getRangesAndNextTextElement, highlightText } from "../utils/highlight";
+import {
+  getRangesAndNextTextElement,
+  highlightText,
+  removeHighlight,
+} from "../utils/highlight";
 
 interface Audio {
   getNewSource: () => AudioBufferSourceNode;
@@ -24,6 +28,7 @@ export const useSocket = (getNextPage: () => void) => {
   }>(null);
   const audioQueue = useRef(new Array<Audio>());
   const audioEventSetup = useRef(new Event("setup-next"));
+  const highlightElement = useRef<HTMLDivElement[]>(null);
 
   const playPause = (play: boolean) => {
     if (
@@ -40,7 +45,8 @@ export const useSocket = (getNextPage: () => void) => {
     if (play) {
       const { audio, range, offset } = currentAudio.current;
       if (!audio || !range) return;
-      highlightText(range);
+      if (highlightElement.current) removeHighlight(highlightElement.current);
+      highlightElement.current = highlightText(range) || null;
       currentAudio.current.source = audio.getNewSource();
       currentAudio.current.source.start(0, offset / 1000);
       currentAudio.current.startTime = Date.now() - offset;
@@ -107,6 +113,7 @@ export const useSocket = (getNextPage: () => void) => {
       currentAudio.current = null;
       ranges.current = null;
       socket.current?.removeEventListener("message", handleMessage);
+      if (highlightElement.current) removeHighlight(highlightElement.current);
       socket.current?.close();
       window.removeEventListener("setup-next", setupNext);
       socket.current = new WebSocket("ws://localhost:8000/kokoro");
@@ -143,5 +150,5 @@ export const useSocket = (getNextPage: () => void) => {
     }
   };
 
-  return { socket, sendText, play, playPause };
+  return { socket, sendText, play, playPause, highlightElement };
 };

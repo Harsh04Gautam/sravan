@@ -98,7 +98,29 @@ export const getRangesAndNextTextElement = (
 };
 
 export const highlightText = (range: Range[] | null) => {
+  const highlightElements = [];
   if (!range) return;
-  const searchResultsHighlight = new Highlight(...range.flat());
-  CSS.highlights.set("search-results", searchResultsHighlight);
+  const container = document.querySelector(".pdf-wrapper");
+  if (!container) return;
+  const containerRect = container.getBoundingClientRect();
+
+  for (let r of range) {
+    const clientRect = r.getBoundingClientRect();
+    const highlight = document.createElement("div");
+    highlightElements.push(highlight);
+    highlight.id = "highlight";
+    container?.appendChild(highlight);
+    highlight.style.left = `${clientRect.left - containerRect.left}px`;
+    highlight.style.top = `${clientRect.top - containerRect.top}px`;
+    highlight.style.width = `${clientRect.width}px`;
+    highlight.style.height = `${clientRect.height}px`;
+  }
+
+  return highlightElements;
+};
+
+export const removeHighlight = (elements: HTMLDivElement[]) => {
+  for (let e of elements) {
+    e.remove();
+  }
 };

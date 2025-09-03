@@ -4,6 +4,11 @@
   box-shadow: 4px 4px 0 var(--black);
   height: 100% !important;
   min-width: 100% !important;
+  /* mix-blend-mode: multiply; */
+}
+
+.pdf-wrapper {
+  position: relative;
 }
 
 .control-container {
@@ -33,6 +38,9 @@
   box-shadow: 4px 4px 0 var(--black);
 }
 
-::highlight(search-results) {
-  background-color: rgba(115, 87, 81, 0.25);
+#highlight {
+  background-color: var(--primary);
+  background-color: #d2bba0;
+  position: absolute;
+  mix-blend-mode: multiply;
 }
